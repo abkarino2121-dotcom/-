@@ -24,3 +24,9 @@ Homestead.yaml
 Thumbs.db
 /public/build
 /node_modules
+node_modules/\npublic/build/\nvendor/\n.env
+
+vendor/
+node_modules/
+public/build/
+.env

@@ -32,6 +32,7 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'discount' => 'nullable|numeric|min:0',
+            'status' => 'nullable|string|in:Quotation,Pending Design,In Production,Ready,Completed',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
             'items.*.width' => 'required|numeric|min:0.01',
@@ -43,10 +44,11 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         try {
+            $status = $validated['status'] ?? 'Quotation';
             $order = Order::create([
                 'customer_id' => $validated['customer_id'],
                 'discount' => $validated['discount'] ?? 0,
-                'status' => 'Quotation'
+                'status' => $status
             ]);
 
             $subtotal = 0;
@@ -92,6 +94,13 @@ class OrderController extends Controller
                 'vat' => $vat,
                 'total' => $total
             ]);
+
+            // If created directly as completed, use workflow service to generate invoice
+            if ($status === 'Completed') {
+                // Temporarily un-set status to trigger transition logic
+                $order->status = 'Pending';
+                $this->workflowService->updateOrderStatus($order, 'Completed');
+            }
 
             DB::commit();
 
